@@ -11,11 +11,13 @@
 <body>
   <div id="app">
     <p>{{name}}</p>
+    <input type="text" v-model="name">
   </div>
   <script>
     class Vue {
       constructor(options) {
         this.$options = options
+        this.$data = options.data;
         new Compile(options.el, this)
       }
     }
@@ -30,12 +32,18 @@
       }
 
       compile(el) {
-        const childNodes = el.childNodes
+        const childNodes = Array.from(el.childNodes)
 
         childNodes.forEach((node) => {
-          // console.log(node, node.nodeType, node.childNodes);
+          // 标签类型
+          if (this.isElement(node)) {
+            // 遍历attributes
+            this.comAttributes(node)
+            // console.log(node, node.nodeType, node.childNodes);
+          }
           // 匹配出带有{{}}内容
-          if (node.nodeType === 3 && /\{\{(.*)\}\}/.test(node.textContent)) {
+          if (this.isText(node)) {
+            // text类型
             this.compileText(node)
           }
 
@@ -46,8 +54,47 @@
         });
       }
 
+      // 编译行内指令
+      comAttributes(node) {
+        const {
+          attributes
+        } = node
+        // console.log(attributes);
+        Array.from(attributes).forEach((attr) => {
+          const attrName = attr.name
+          const attrValue = attr.value
+          if (this.isDirective(attrName)) {
+            const dir = attrName.substring(2)
+            // 执行具体功能
+            this[dir] && this[dir](node, attrValue)
+            // console.log(attr, attrName, dir, attrValue);
+          }
+        })
+      }
+
+      // v-model赋值、监听input输入
+      model(node, exp) {
+        node.value = this.$vm.$data[exp]
+        node.addEventListener('input', e => {
+          this.$vm.$data[exp] = e.target.value
+        })
+      }
+
       compileText(node) {
-        node.textContent = this.$vm.$options.data[RegExp.$1]
+        node.textContent = this.$vm.$data[RegExp.$1]
+      }
+
+      isElement(node) {
+        return node.nodeType === 1
+      }
+
+      isText(node) {
+        return node.nodeType === 3 && /\{\{(.*)\}\}/.test(node.textContent)
+      }
+
+      // 自定义指令、包含v-且在最前面
+      isDirective(attr) {
+        return attr.indexOf('v-') === 0
       }
     }
 
