@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>myVue</title>
+</head>
+
+<body>
+  <div id="app">
+    <p>{{name}}</p>
+  </div>
+  <script>
+    class Vue {
+      constructor(options) {
+        this.$options = options
+        new Compile(options.el, this)
+      }
+    }
+
+    // 编译
+    class Compile {
+      constructor(el, vm) {
+        this.$el = document.querySelector(el)
+        this.$vm = vm
+
+        this.compile(this.$el)
+      }
+
+      compile(el) {
+        const childNodes = el.childNodes
+
+        childNodes.forEach((node) => {
+          // console.log(node, node.nodeType, node.childNodes);
+          // 匹配出带有{{}}内容
+          if (node.nodeType === 3 && /\{\{(.*)\}\}/.test(node.textContent)) {
+            this.compileText(node)
+          }
+
+          // 递归遍历所有节点
+          if (node.childNodes && node.childNodes.length > 0) {
+            this.compile(node)
+          }
+        });
+      }
+
+      compileText(node) {
+        node.textContent = this.$vm.$options.data[RegExp.$1]
+      }
+    }
+
+    new Vue({
+      el: '#app',
+      data: {
+        name: '123'
+      }
+    })
+  </script>
+</body>
+
+</html>
