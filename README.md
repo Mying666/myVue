@@ -1,3 +1,4 @@
+[demo页面](https://mying666.github.io/myVue/)
 ## 替换{{}}里的内容
 1. 获取el内所有dom
 2. 判断nodetype类型
