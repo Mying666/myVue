@@ -21,7 +21,7 @@
       constructor(options) {
         this.$options = options
         this.$data = options.data;
-        this.$watcher = {}
+        this.$dep = new Dep()
         this.observe(this.$data)
         new Compile(options.el, this)
       }
@@ -29,37 +29,38 @@
       observe(obj) {
         const vm = this
         Object.keys(obj).forEach(key => {
-          console.log();
+          this.proxyData(key)
           let value = obj[key]
           Object.defineProperty(obj, key, {
             get() {
-              // console.log('获取数据');
               return value
             },
             set(newVal) {
-              vm.update(key, newVal)
-              // console.log('更新数据去触发dom更新');
-              // 此处需要触发绑定过name的所有dom、所以在编译赋值的时候需要保存、由此引出——Watcher
+              vm.$dep.notify(key, newVal)
               value = newVal
             }
           })
         })
       }
 
-      addWatcher(key, node) {
-        let nodes = this.$watcher[key] || []
-        nodes.push(node)
-        this.$watcher[key] = nodes
-      }
+      // 代理data
+      proxyData(key) {
+        Object.defineProperty(this, key, {
+          get() {
+            return this.$data[key]
+          },
 
-      update(wkey, value) {
-        this.$watcher[wkey].forEach(node => {
-          node.textContent = value
+          set(newVal) {
+            this.$data[key] = newVal
+          }
         })
       }
     }
 
-    // 编译
+    /**
+     * 编译
+     * dom的更新
+     */
     class Compile {
       constructor(el, vm) {
         this.$el = document.querySelector(el)
@@ -111,17 +112,19 @@
 
       // v-model赋值、监听input输入
       model(node, exp) {
-        node.value = this.$vm.$data[exp]
+        node.value = this.$vm[exp]
         node.addEventListener('input', e => {
-          this.$vm.$data[exp] = e.target.value
+          this.$vm[exp] = e.target.value
         })
       }
 
       // 编译文本
       compileText(node) {
-        this.textUpdater(node, this.$vm.$data[RegExp.$1])
+        this.textUpdater(node, this.$vm[RegExp.$1])
         // 记录Watcher
-        this.$vm.addWatcher(RegExp.$1, node)
+        new Watcher(this.$vm, RegExp.$1, (value) => {
+          this.textUpdater(node, value)
+        })
       }
 
       textUpdater(node, text) {
@@ -142,6 +145,34 @@
       }
     }
 
+    /** 
+     * 监听
+     */
+    class Watcher {
+      constructor(vm, key, update) {
+        this.key = key
+        this.update = update
+        vm.$dep.addDep(key, this)
+      }
+    }
+
+    //依赖搜集
+    //Dep: 用来管理 Watcher
+    class Dep {
+      constructor() {
+        this.deps = {}
+      }
+      addDep(key, watcher) {
+        const wArr = this.deps[key] || []
+        wArr.push(watcher)
+        this.deps[key] = wArr
+      }
+      notify (key, value) {
+        this.deps[key].forEach(watcher => {
+          watcher.update(value)
+        })
+      }
+    }
     new Vue({
       el: '#app',
       data: {
