@@ -24,6 +24,9 @@
         this.$dep = new Dep()
         this.observe(this.$data)
         new Compile(options.el, this)
+        if (options.mounted) {
+          options.mounted.call(this)
+        }
       }
 
       observe(obj) {
@@ -112,7 +115,10 @@
 
       // v-model赋值、监听input输入
       model(node, exp) {
-        node.value = this.$vm[exp]
+        this.inputUpdater(node, this.$vm[exp])
+        new Watcher(this.$vm, exp, (value) => {
+          this.inputUpdater(node, value)
+        })
         node.addEventListener('input', e => {
           this.$vm[exp] = e.target.value
         })
@@ -125,6 +131,10 @@
         new Watcher(this.$vm, RegExp.$1, (value) => {
           this.textUpdater(node, value)
         })
+      }
+
+      inputUpdater(node, text) {
+        node.value = text
       }
 
       textUpdater(node, text) {
@@ -178,6 +188,11 @@
       data: {
         name: '123',
         name1: ''
+      },
+
+      mounted () {
+        console.log('mounted')
+        this.name = '456'
       }
     })
   </script>
